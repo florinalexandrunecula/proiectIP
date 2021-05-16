@@ -1,0 +1,1 @@
+curl -X POST localhost:9080/settings/latime/2 && curl -X POST localhost:9080/settings/lungime/2 && curl -X POST localhost:9080/settings/matrice/1234 && curl localhost:9080/settings/matrice
