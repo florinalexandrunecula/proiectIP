@@ -162,6 +162,10 @@ private:
         Guard guard(LawnMowerLock);
 
         //apeleaza initializarea lui Cami
+        int setResponseCharge = lwn.ChargeLocation();
+        if (setResponseCharge == 0) {
+            response.send(Http::Code::Not_Found," No charge statation available in your yard");
+        }
 
         int setResponse = lwn.setBaterie("100");
 
@@ -239,8 +243,8 @@ private:
 
 
     	}
-        int setBaterie(std::string value){
 
+        int setBaterie(std::string value){
             int nivel = std::stoi(value);
 
             if(nivel > 100 || nivel < 0){
@@ -255,9 +259,20 @@ private:
 
         
         string getBaterie(){
-
             return std::to_string(baterie.nivel);
         }
+
+
+    	int ChargeLocation(){
+        	for (int i = 0; i < curte.lungime; i++) {
+            	for (int j = 0; j < curte.latime; j++) {
+                	if (curte.matrice[i][j] == 2) {
+                    	return 1;
+                	}
+           		}
+        	}
+        	return 0;
+    	}
 
     private:
     	struct settings{
