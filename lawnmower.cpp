@@ -66,18 +66,20 @@ private:
         Routes::Post(router, "/settings/:settingName/:value", Routes::bind(&LawnMowerEndpoint::setSettings, this));
 
         // initializeaza nivelul bateriei 100%
-        Routes::Post(router, "/init/:value", Routes::bind(&LawnMowerEndpoint::&LawnMowerEndpoint::initBattery, this));
+        Routes::Post(router, "/init/:value", Routes::bind(&LawnMowerEndpoint::initBattery, this));
 
         
-        Routes::Get(router, "/baterie", )
+        Routes::Get(router, "/baterie", Routes::bind(&LawnMowerEndpoint::getBattery, this));
         Routes::Get(router, "/settings/:settingName", Routes::bind(&LawnMowerEndpoint::getSettings, this));
+        Routes::Post(router, "/goToCharge", Routes::bind(&LawnMowerEndpoint::goToCharge, this));
     }
 
     void initBattery(const Rest::Request& request, Http::ResponseWriter response){
-        int baterie;
+        string baterie;
         
         if (request.hasParam(":value")) {
-            baterie = std::stoi(request.param(":value"));
+            auto bat = request.param(":value");
+            baterie = bat.as<string>();
         }
 
         int setResponse = lwn.setBaterie(baterie);
@@ -86,7 +88,7 @@ private:
             response.send(Http::Code::Ok, "Battery was set to " + baterie);
         }
         else {
-            response.send(Http::Code::Not_Found, val + "' was not a valid value ");
+            response.send(Http::Code::Not_Found, baterie + "' was not a valid value ");
         }
 
 
@@ -124,7 +126,7 @@ private:
             val = value.as<string>();
         }
 
-    	int setResponse = lwn.set(val);
+    	int setResponse = lwn.set(settingName, val);
 
     	if (setResponse == 1) {
             response.send(Http::Code::Ok, settingName + " was set to " + val);
@@ -152,6 +154,22 @@ private:
         }
         else {
             response.send(Http::Code::Not_Found, settingName + " was not found");
+        }
+    }
+
+    void goToCharge(const Rest::Request& request, Http::ResponseWriter response) {
+
+        Guard guard(LawnMowerLock);
+
+        //apeleaza initializarea lui Cami
+
+        int setResponse = lwn.setBaterie("100");
+
+        if (setResponse == 1) {
+            response.send(Http::Code::Ok, "Battery was set to: 100%");
+        }
+        else {
+            response.send(Http::Code::Not_Found," invalid ");
         }
     }
 
@@ -229,7 +247,7 @@ private:
                 return 0;
             }
             else{
-                baterie.nivel = value;
+                baterie.nivel = nivel;
             }
 
             return 1;

@@ -1,1 +1,5 @@
 curl -X POST localhost:9080/settings/latime/2 && curl -X POST localhost:9080/settings/lungime/2 && curl -X POST localhost:9080/settings/matrice/1234 && curl localhost:9080/settings/matrice
+
+curl -X POST localhost:9080/init/100 && curl localhost:9080/baterie
+
+g++ lawnmower.cpp -o lawnmower -lpistache -lcrypto -lssl -lpthread -std=c++17
