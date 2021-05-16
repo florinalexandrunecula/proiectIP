@@ -64,14 +64,15 @@ private:
         using namespace Rest;
         Routes::Get(router, "/auth", Routes::bind(&LawnMowerEndpoint::doAuth, this));
         Routes::Post(router, "/settings/:settingName/:value", Routes::bind(&LawnMowerEndpoint::setSettings, this));
-
         // initializeaza nivelul bateriei 100%
         Routes::Post(router, "/init/:value", Routes::bind(&LawnMowerEndpoint::initBattery, this));
-
-        
         Routes::Get(router, "/baterie", Routes::bind(&LawnMowerEndpoint::getBattery, this));
         Routes::Get(router, "/settings/:settingName", Routes::bind(&LawnMowerEndpoint::getSettings, this));
         Routes::Post(router, "/goToCharge", Routes::bind(&LawnMowerEndpoint::goToCharge, this));
+        // stop-resume
+        Routes::Post(router, "/:stateName", Routes::bind(&LawnMowerEndpoint::setState, this));
+        Routes::Get(router, "/state", Routes::bind(&LawnMowerEndpoint::getState, this));
+
     }
 
     void initBattery(const Rest::Request& request, Http::ResponseWriter response){
@@ -177,6 +178,50 @@ private:
         }
     }
 
+    void setState(const Rest::Request& request, Http::ResponseWriter response){
+
+        auto stateName = request.param(":stateName").as<std::string>();
+        int setResponse = lwn.setState(stateName);
+
+        string batteryLevel = lwn.getBaterie();
+        // todo cat mai are de tuns
+
+        if (setResponse == 1) {
+            if(stateName == "stop"){
+                response.send(Http::Code::Ok, "The Lawnmower was stopped and the battery has level " + batteryLevel);
+            }
+            else{
+                response.send(Http::Code::Ok, "The Lawnmower was resumed");
+
+            }
+        }
+        else {
+            response.send(Http::Code::Not_Found,"not a valid state");
+        }
+
+    }
+
+    void getState(const Rest::Request& request, Http::ResponseWriter response){
+        Guard guard(LawnMowerLock);
+
+        bool state = lwn.getState();
+
+        using namespace Http;
+        response.headers()
+                    .add<Header::Server>("pistache/0.1")
+                    .add<Header::ContentType>(MIME(Text, Plain));
+
+        if(state){
+
+        response.send(Http::Code::Ok, "The lawnmower is working");
+        }
+        else{
+            response.send(Http::Code::Ok, "The lawnmower is not working");
+        }
+
+    }
+
+
     // conventie: latime = coloane; lungime = linii !!!!
     // Q.E.D. box
 
@@ -274,6 +319,27 @@ private:
         	return 0;
     	}
 
+    	int setState(std::string name){
+
+            if(name == "stop"){
+                stop.state = false;
+            }
+            else if(name == "resume") {
+                stop.state = true;
+            }
+            else{
+                return 0;
+            }
+            return 1;
+        }
+
+
+        bool getState(){
+
+            return stop.state;
+        }
+
+
     private:
     	struct settings{
     		int latime;
@@ -284,6 +350,10 @@ private:
         struct masina{
             int nivel;
         }baterie;
+
+        struct boolState{
+            bool state;
+        }stop;
 
     };
 
