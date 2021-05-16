@@ -64,7 +64,46 @@ private:
         using namespace Rest;
         Routes::Get(router, "/auth", Routes::bind(&LawnMowerEndpoint::doAuth, this));
         Routes::Post(router, "/settings/:settingName/:value", Routes::bind(&LawnMowerEndpoint::setSettings, this));
+
+        // initializeaza nivelul bateriei 100%
+        Routes::Post(router, "/init/:value", Routes::bind(&LawnMowerEndpoint::&LawnMowerEndpoint::initBattery, this));
+
+        
+        Routes::Get(router, "/baterie", )
         Routes::Get(router, "/settings/:settingName", Routes::bind(&LawnMowerEndpoint::getSettings, this));
+    }
+
+    void initBattery(const Rest::Request& request, Http::ResponseWriter response){
+        int baterie;
+        
+        if (request.hasParam(":value")) {
+            baterie = std::stoi(request.param(":value"));
+        }
+
+        int setResponse = lwn.setBaterie(baterie);
+        
+        if (setResponse == 1) {
+            response.send(Http::Code::Ok, "Battery was set to " + baterie);
+        }
+        else {
+            response.send(Http::Code::Not_Found, val + "' was not a valid value ");
+        }
+
+
+    }
+
+    void getBattery(const Rest::Request& request, Http::ResponseWriter response){
+        Guard guard(LawnMowerLock);
+
+        string baterie = lwn.getBaterie();
+
+        using namespace Http;
+        response.headers()
+                    .add<Header::Server>("pistache/0.1")
+                    .add<Header::ContentType>(MIME(Text, Plain));
+
+        response.send(Http::Code::Ok, "Battery has level: " + baterie + "%");
+    
     }
 
     void doAuth(const Rest::Request& request, Http::ResponseWriter response) {
@@ -85,7 +124,7 @@ private:
             val = value.as<string>();
         }
 
-    	int setResponse = lwn.set(settingName, val);
+    	int setResponse = lwn.set(val);
 
     	if (setResponse == 1) {
             response.send(Http::Code::Ok, settingName + " was set to " + val);
@@ -167,6 +206,7 @@ private:
     		if(name == "lungime"){
     			return std::to_string(curte.lungime);
     		}
+            
     		if(name == "matrice"){
     			string k = "";
     			for (int i = 0; i < curte.lungime;i++){
@@ -179,7 +219,27 @@ private:
     		}
     		return "";
 
+
     	}
+        int setBaterie(std::string value){
+
+            int nivel = std::stoi(value);
+
+            if(nivel > 100 || nivel < 0){
+                return 0;
+            }
+            else{
+                baterie.nivel = value;
+            }
+
+            return 1;
+        }
+
+        
+        string getBaterie(){
+
+            return std::to_string(baterie.nivel);
+        }
 
     private:
     	struct settings{
@@ -187,6 +247,10 @@ private:
     		int lungime;
     		int matrice[500][500];
     	}curte;
+
+        struct masina{
+            int nivel;
+        }baterie;
 
     };
 
