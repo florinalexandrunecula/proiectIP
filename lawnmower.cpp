@@ -221,6 +221,140 @@ private:
 
     }
 
+    int[] determineRoad(int matrix[][], int lin, int col, int linStart, int colStart){
+        int road[lin*col];
+        road[0] = 0;
+        int i = linStart;
+        int j = colStart;
+
+        //daca nu e blocat in jos, merge in maxim in jos si se duce in coltul din dreapta
+        if (matrix[i+1][j] != 1){
+            for (; i<=lin; i++){
+                road[0]++;
+                road[ road[0]] = i * 10000 + j;
+            }
+
+            for (; j<=col; j++){
+                road[0]++;
+                road[ road[0]] = i * 10000 + j;
+            }
+        }
+        else{ //altfel, intai merge dreapta maxim si dupa jos ca sa ajunga in acelasi colt
+            for (; j<=col; j++){
+                road[0]++;
+                road[ road[0]] = i * 10000 + j;
+            }
+            for (; i<=lin; i++){
+                road[0]++;
+                road[ road[0]] = i * 10000 + j;
+            }
+        }
+        
+        //1 pt spre dreapta, 0 pentru stanga
+        int lastdir = 1;
+        
+        //porneste in zig zag 
+        for (;i > 0 ; i--){
+            if (lastdir == 1){
+                for (j = lastj; j > 0; j--){
+                    road[0]++;
+                    road[ road[0]] = i * 10000 + j;
+                    if (matrix[i][j-1] != 1){
+                        lastdir = 0;
+                        break;
+                    }
+                }
+                lastdir = 0;
+            }
+            else{
+                for (j = lastj; j <= col; j++){
+                    road[0]++;
+                    road[ road[0]] = i * 10000 + j;
+                    if (matrix[i][j+1] != 1){
+                        lastdir = 1;
+                        break;
+                    }
+                }
+                lastdir = 1;
+            }
+            
+        }
+
+        //acum porneste iar in zig zag acoperind partea ramasa
+
+        for (;i <= lin ; i++){
+            if (lastdir == 1){
+                for (j = lastj; j > 0; j--){
+                    road[0]++;
+                    road[ road[0]] = i * 10000 + j;
+                    if (matrix[i][j-1] != 1){
+                        lastdir = 0;
+                        break;
+                    }
+                }
+                lastdir = 0;
+            }
+            else{
+                for (j = lastj; j <= col; j++){
+                    road[0]++;
+                    road[ road[0]] = i * 10000 + j;
+                    if (matrix[i][j+1] != 1){
+                        lastdir = 1;
+                        break;
+                    }
+                }
+                lastdir = 1;
+            }
+            
+        }
+
+        if (matrix[linStart+1][colStart] == 0){
+            if (j==col){
+                for (; j>colStart; j--){
+                    road[0]++;
+                    road[ road[0]] = i * 10000 + j;
+                }
+            }
+            else{
+                for (; j>colStart; j++){
+                    road[0]++;
+                    road[ road[0]] = i * 10000 + j;
+                }
+            }
+            for (; i>=linStart; i--){
+                road[0]++;
+                road[ road[0]] = i * 10000 + j;
+            }
+        }
+        else{
+            for (; i>=linStart; i--){
+                road[0]++;
+                road[ road[0]] = i * 10000 + j;
+            }
+            if (j==col){
+                for (; j>colStart; j--){
+                    road[0]++;
+                    road[ road[0]] = i * 10000 + j;
+                }
+            }
+            else{
+                for (; j>colStart; j++){
+                    road[0]++;
+                    road[ road[0]] = i * 10000 + j;
+                }
+            }
+            for (; i>=linStart; i--){
+                road[0]++;
+                road[ road[0]] = i * 10000 + j;
+            }
+        }
+
+
+        // pe pozitia 0 este numarul de mutari
+        // pe restul pozitiilor se afla coordonatele ce pot fi aflate: lin = road[i]/10000; col = road[i]%10000
+        return road;
+    }
+
 
     // conventie: latime = coloane; lungime = linii !!!!
     // Q.E.D. box
