@@ -1,6 +1,14 @@
 - TESTS
 
-curl -X POST localhost:9080/settings/latime/2 && curl -X POST localhost:9080/settings/lungime/2 && curl -X POST localhost:9080/settings/matrice/1234 && curl localhost:9080/settings/matrice
+00000
+01120
+01100
+00000
+00000
+
+0000001120011000000000000
+
+curl -X POST localhost:9080/settings/latime/5 && curl -X POST localhost:9080/settings/lungime/5 && curl -X POST localhost:9080/settings/matrice/0000001120011000000000000 && curl localhost:9080/settings/matrice
 
 curl -X POST localhost:9080/init/100 && curl localhost:9080/baterie
 

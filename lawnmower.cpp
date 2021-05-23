@@ -69,9 +69,10 @@ private:
         Routes::Get(router, "/baterie", Routes::bind(&LawnMowerEndpoint::getBattery, this));
         Routes::Get(router, "/settings/:settingName", Routes::bind(&LawnMowerEndpoint::getSettings, this));
         Routes::Post(router, "/goToCharge", Routes::bind(&LawnMowerEndpoint::goToCharge, this));
-        // stop-resume
+        // stop-resume-start
         Routes::Post(router, "/:stateName", Routes::bind(&LawnMowerEndpoint::setState, this));
         Routes::Get(router, "/state", Routes::bind(&LawnMowerEndpoint::getState, this));
+        Routes::Get(router, "/buildRoad", Routes::bind(&LawnMowerEndpoint::getRoad, this));
 
     }
 
@@ -190,8 +191,18 @@ private:
             if(stateName == "stop"){
                 response.send(Http::Code::Ok, "The Lawnmower was stopped and the battery has level " + batteryLevel);
             }
-            else{
+            else if(stateName == "resume"){
                 response.send(Http::Code::Ok, "The Lawnmower was resumed");
+            } else {
+            	int road[10000];
+    			lwn.determineRoad(road);
+    			int roadLength = road[0];
+    			int batteryLevelInt = lwn.getBaterieAsInt();
+    			if (roadLength  > batteryLevelInt) {
+    				response.send(Http::Code::Ok, "Battery level not enough for this operation!");
+    			} else {
+    				response.send(Http::Code::Ok, "The Lawnmower has started. It will finish in " + std::to_string(roadLength * 30) + " seconds");
+    			}
 
             }
         }
@@ -221,138 +232,33 @@ private:
 
     }
 
-    int[] determineRoad(int matrix[][], int lin, int col, int linStart, int colStart){
-        int road[lin*col];
-        road[0] = 0;
-        int i = linStart;
-        int j = colStart;
+    void getRoad(const Rest::Request& request, Http::ResponseWriter response) {
+    	std::cout<<"Aici 1";
+    	Guard guard(LawnMowerLock);
 
-        //daca nu e blocat in jos, merge in maxim in jos si se duce in coltul din dreapta
-        if (matrix[i+1][j] != 1){
-            for (; i<=lin; i++){
-                road[0]++;
-                road[ road[0]] = i * 10000 + j;
-            }
+    	//int* road = lwn.determineRoad();
+    	//int road = lwn.getChargeLocation();
 
-            for (; j<=col; j++){
-                road[0]++;
-                road[ road[0]] = i * 10000 + j;
-            }
-        }
-        else{ //altfel, intai merge dreapta maxim si dupa jos ca sa ajunga in acelasi colt
-            for (; j<=col; j++){
-                road[0]++;
-                road[ road[0]] = i * 10000 + j;
-            }
-            for (; i<=lin; i++){
-                road[0]++;
-                road[ road[0]] = i * 10000 + j;
-            }
-        }
-        
-        //1 pt spre dreapta, 0 pentru stanga
-        int lastdir = 1;
-        
-        //porneste in zig zag 
-        for (;i > 0 ; i--){
-            if (lastdir == 1){
-                for (j = lastj; j > 0; j--){
-                    road[0]++;
-                    road[ road[0]] = i * 10000 + j;
-                    if (matrix[i][j-1] != 1){
-                        lastdir = 0;
-                        break;
-                    }
-                }
-                lastdir = 0;
-            }
-            else{
-                for (j = lastj; j <= col; j++){
-                    road[0]++;
-                    road[ road[0]] = i * 10000 + j;
-                    if (matrix[i][j+1] != 1){
-                        lastdir = 1;
-                        break;
-                    }
-                }
-                lastdir = 1;
-            }
-            
-        }
+    	int road[10000];
+    	lwn.determineRoad(road);
 
-        //acum porneste iar in zig zag acoperind partea ramasa
 
-        for (;i <= lin ; i++){
-            if (lastdir == 1){
-                for (j = lastj; j > 0; j--){
-                    road[0]++;
-                    road[ road[0]] = i * 10000 + j;
-                    if (matrix[i][j-1] != 1){
-                        lastdir = 0;
-                        break;
-                    }
-                }
-                lastdir = 0;
-            }
-            else{
-                for (j = lastj; j <= col; j++){
-                    road[0]++;
-                    road[ road[0]] = i * 10000 + j;
-                    if (matrix[i][j+1] != 1){
-                        lastdir = 1;
-                        break;
-                    }
-                }
-                lastdir = 1;
-            }
-            
-        }
 
-        if (matrix[linStart+1][colStart] == 0){
-            if (j==col){
-                for (; j>colStart; j--){
-                    road[0]++;
-                    road[ road[0]] = i * 10000 + j;
-                }
-            }
-            else{
-                for (; j>colStart; j++){
-                    road[0]++;
-                    road[ road[0]] = i * 10000 + j;
-                }
-            }
-            for (; i>=linStart; i--){
-                road[0]++;
-                road[ road[0]] = i * 10000 + j;
-            }
+    	std::cout<<"Aici 2";
+
+
+    	using namespace Http;
+        response.headers()
+                    .add<Header::Server>("pistache/0.1")
+                    .add<Header::ContentType>(MIME(Text, Plain));
+
+        if(road[0] != 0){
+        response.send(Http::Code::Ok, "Road length is " + std::to_string(road[0]));
         }
         else{
-            for (; i>=linStart; i--){
-                road[0]++;
-                road[ road[0]] = i * 10000 + j;
-            }
-            if (j==col){
-                for (; j>colStart; j--){
-                    road[0]++;
-                    road[ road[0]] = i * 10000 + j;
-                }
-            }
-            else{
-                for (; j>colStart; j++){
-                    road[0]++;
-                    road[ road[0]] = i * 10000 + j;
-                }
-            }
-            for (; i>=linStart; i--){
-                road[0]++;
-                road[ road[0]] = i * 10000 + j;
-            }
+            response.send(Http::Code::Ok, "Error!");
         }
 
-
-        // pe pozitia 0 este numarul de mutari
-        // pe restul pozitiilor se afla coordonatele ce pot fi aflate: lin = road[i]/10000; col = road[i]%10000
-        return road;
     }
 
 
@@ -441,6 +347,10 @@ private:
             return std::to_string(baterie.nivel);
         }
 
+        int getBaterieAsInt(){
+        	return baterie.nivel;
+        }
+
 
     	int ChargeLocation(){
         	for (int i = 0; i < curte.lungime; i++) {
@@ -453,6 +363,16 @@ private:
         	return 0;
     	}
 
+    	int getChargeLocation() {
+    		for (int i = 0; i < curte.lungime; i++) {
+            	for (int j = 0; j < curte.latime; j++) {
+                	if (curte.matrice[i][j] == 2) {
+                    	return i*10000 + j;
+                	}
+           		}
+        	}
+    	}
+
     	int setState(std::string name){
 
             if(name == "stop"){
@@ -460,6 +380,9 @@ private:
             }
             else if(name == "resume") {
                 stop.state = true;
+            }
+            else if(name == "start"){
+            	stop.state = true;
             }
             else{
                 return 0;
@@ -472,6 +395,149 @@ private:
 
             return stop.state;
         }
+
+        void determineRoad(int* road){
+        	std::cout<<"Aici 3";
+
+        	int lin = curte.lungime;
+        	int col = curte.latime;
+        	int linStart = getChargeLocation() / 10000;
+        	int colStart = getChargeLocation() % 10000;
+	        road[0] = 0;
+	        int i = linStart;
+	        int j = colStart;
+	        std::cout<<"Aici 4";
+
+
+	        //daca nu e blocat in jos, merge in maxim in jos si se duce in coltul din dreapta
+	        if (curte.matrice[i+1][j] != 1){
+	            for (; i<=lin; i++){
+	                road[0]++;
+	                road[ road[0]] = i * 10000 + j;
+	            }
+
+	            for (; j<=col; j++){
+	                road[0]++;
+	                road[ road[0]] = i * 10000 + j;
+	            }
+	        }
+	        else{ //altfel, intai merge dreapta maxim si dupa jos ca sa ajunga in acelasi colt
+	            for (; j<=col; j++){
+	                road[0]++;
+	                road[ road[0]] = i * 10000 + j;
+	            }
+	            for (; i<=lin; i++){
+	                road[0]++;
+	                road[ road[0]] = i * 10000 + j;
+	            }
+	        }
+	        
+	        //1 pt spre dreapta, 0 pentru stanga
+	        int lastdir = 1;
+	        int lastj = col;
+	        std::cout<<"Aici 5";
+	        
+	        //porneste in zig zag 
+	        for (;i > 0 ; i--){
+	            if (lastdir == 1){
+	                for (j = lastj; j > 0; j--){
+	                    road[0]++;
+	                    road[ road[0]] = i * 10000 + j;
+	                    if (curte.matrice[i][j-1] != 1){
+	                        lastdir = 0;
+	                        break;
+	                    }
+	                }
+	                lastdir = 0;
+	            }
+	            else{
+	                for (j = lastj; j <= col; j++){
+	                    road[0]++;
+	                    road[ road[0]] = i * 10000 + j;
+	                    if (curte.matrice[i][j+1] != 1){
+	                        lastdir = 1;
+	                        break;
+	                    }
+	                }
+	                lastdir = 1;
+	            }
+	            
+	        }
+
+	        //acum porneste iar in zig zag acoperind partea ramasa
+
+	        for (;i <= lin ; i++){
+	            if (lastdir == 1){
+	                for (j = lastj; j > 0; j--){
+	                    road[0]++;
+	                    road[ road[0]] = i * 10000 + j;
+	                    if (curte.matrice[i][j-1] != 1){
+	                        lastdir = 0;
+	                        break;
+	                    }
+	                }
+	                lastdir = 0;
+	            }
+	            else{
+	                for (j = lastj; j <= col; j++){
+	                    road[0]++;
+	                    road[ road[0]] = i * 10000 + j;
+	                    if (curte.matrice[i][j+1] != 1){
+	                        lastdir = 1;
+	                        break;
+	                    }
+	                }
+	                lastdir = 1;
+	            }
+	            
+	        }
+
+	        if (curte.matrice[linStart+1][colStart] == 0){
+	            if (j==col){
+	                for (; j>colStart; j--){
+	                    road[0]++;
+	                    road[ road[0]] = i * 10000 + j;
+	                }
+	            }
+	            else{
+	                for (; j>colStart; j++){
+	                    road[0]++;
+	                    road[ road[0]] = i * 10000 + j;
+	                }
+	            }
+	            for (; i>=linStart; i--){
+	                road[0]++;
+	                road[ road[0]] = i * 10000 + j;
+	            }
+	        }
+	        else{
+	            for (; i>=linStart; i--){
+	                road[0]++;
+	                road[ road[0]] = i * 10000 + j;
+	            }
+	            if (j==col){
+	                for (; j>colStart; j--){
+	                    road[0]++;
+	                    road[ road[0]] = i * 10000 + j;
+	                }
+	            }
+	            else{
+	                for (; j>colStart; j++){
+	                    road[0]++;
+	                    road[ road[0]] = i * 10000 + j;
+	                }
+	            }
+	            for (; i>=linStart; i--){
+	                road[0]++;
+	                road[ road[0]] = i * 10000 + j;
+	            }
+	        }
+	        std::cout<<"Aici 6";
+
+
+	        // pe pozitia 0 este numarul de mutari
+	        // pe restul pozitiilor se afla coordonatele ce pot fi aflate: lin = road[i]/10000; col = road[i]%10000
+    	}	
 
 
     private:
